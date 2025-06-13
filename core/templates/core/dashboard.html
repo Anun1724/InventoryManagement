@@ -113,7 +113,7 @@
                 </div>
                 <div class="profile-container">
                     <button class="profile-btn" id="profileBtn">
-                        <img src="https://via.placeholder.com/32x32" alt="Profile" class="profile-img">
+                        
                         <span>Dr. Sarah Johnson</span>
                     </button>
                     <!-- Profile Dropdown -->
@@ -186,13 +186,13 @@
                     <div class="horizontal-scroll">
                         {% for product in most_selling %}
                         <div class="medicine-card">
-                            <img src="https://via.placeholder.com/80x80" alt="Medicine">
+                            
                             <div class="medicine-info">
                                 <h3>{{ product.name }}</h3>
                                 <p>{{ product.units_sold|default:0 }} units sold</p>
                                 <div class="medicine-revenue">
                                     <span class="revenue">₹{{ product.price|floatformat:2 }}</span>
-                                    <span class="growth">+0%</span>
+                                    
                                 </div>
                             </div>
                         </div>
@@ -202,42 +202,106 @@
                     </div>
                 </section>
 
-                <!-- Products Section -->
-                <section class="section">
-                    <div class="section-header">
-                        <h2>Products</h2>
-                        <div class="filter-container">
-                            <i class="fas fa-filter"></i>
-                            <form method="get" style="display:inline;">
-                                <select name="filter" id="productFilter" onchange="this.form.submit()">
-                                    <option value="all">All Products</option>
-                                    <option value="stock">Sort by Stock</option>
-                                    <option value="price">Sort by Price</option>
-                                    <option value="selling">Most Selling</option>
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="products-grid" id="productsGrid">
-                        {% for product in products %}
-                        <div class="product-card">
-                            <div class="product-info">
-                                <h3>{{ product.name }}</h3>
-                                <div class="product-price">₹{{ product.price|floatformat:2 }}</div>
-                                <div class="product-details">
-                                    <div class="product-detail"><i class="fas fa-box"></i> Stock: {{ product.stock_quantity }}</div>
-                                    <div class="product-detail"><i class="fas fa-calendar"></i> Expiry: {{ product.expiry_date }}</div>
-                                    <div class="product-detail"><i class="fas fa-user"></i> Vendor: {{ product.vendor.name }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p>No products found.</p>
+                <!-- Enhanced Products Section -->
+<!-- Enhanced Products Section -->
+<section class="section products-section">
+    <div class="section-header">
+        <div class="section-title">
+            <h2>Products</h2>
+            <p class="section-subtitle">Manage your inventory with ease</p>
+        </div>
+        <div class="filter-container">
+            <div class="filter-wrapper">
+                <i class="fas fa-tags"></i>
+                <form method="get" class="filter-form">
+                    <input type="hidden" name="filter" value="{{ selected_filter }}">
+                    <select name="category" id="categoryFilter" onchange="this.form.submit()" class="filter-select">
+                        <option value="all">All Categories</option>
+                        {% for category in categories %}
+                            <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>
+                                {{ category }}
+                            </option>
                         {% endfor %}
-                    </div>
-                </section>
+                    </select>
+                </form>
             </div>
-        </main>
+            <div class="filter-wrapper">
+                <i class="fas fa-filter"></i>
+                <form method="get" class="filter-form">
+                    <input type="hidden" name="category" value="{{ selected_category }}">
+                    <select name="filter" id="productFilter" onchange="this.form.submit()" class="filter-select">
+                        <option value="all" {% if selected_filter == 'all' %}selected{% endif %}>All Products</option>
+                        <option value="stock" {% if selected_filter == 'stock' %}selected{% endif %}>Sort by Stock</option>
+                        <option value="price" {% if selected_filter == 'price' %}selected{% endif %}>Sort by Price</option>
+                    </select>
+                </form>
+            </div>
+        </div>
     </div>
-</body>
-</html>
+    
+    <div class="products-grid" id="productsGrid">
+        {% for product in products %}
+        <div class="product-card">
+            <div class="product-header">
+                <div class="product-status">
+                    {% if product.stock_quantity == 0 %}
+                        <span class="status-badge out-of-stock">Out of Stock</span>
+                    {% elif product.stock_quantity <= 10 %}
+                        <span class="status-badge low-stock">Low Stock</span>
+                    {% else %}
+                        <span class="status-badge in-stock">In Stock</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="product-info">
+                <h3 class="product-name">{{ product.name }}</h3>
+                <div class="product-price">₹{{ product.price }}</div>
+                
+                <div class="product-details">
+                    <div class="product-detail">
+                        <div class="detail-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="detail-content">
+                            <span class="detail-label">Expires</span>
+                            <span class="detail-value">{{ product.expiry_date }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="product-detail">
+                        <div class="detail-icon">
+                            <i class="fas fa-boxes"></i>
+                        </div>
+                        <div class="detail-content">
+                            <span class="detail-label">Stock</span>
+                            <span class="detail-value">{{ product.stock_quantity }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="product-actions">
+                    <form method="post" action="{% url 'sell_product' product.id %}" class="sell-form">
+                        {% csrf_token %}
+                        <div class="quantity-controls">
+                            <input type="number" name="quantity" min="1" max="{{ product.stock_quantity }}" value="1" class="quantity-input">
+                            <button type="submit" class="btn btn-success btn-sell" {% if product.stock_quantity == 0 %}disabled{% endif %}>
+                                <i class="fas fa-shopping-cart"></i>
+                                Sell
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-box-open"></i>
+            </div>
+            <h3>No products found</h3>
+            <p>Add some products to get started with your inventory.</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
