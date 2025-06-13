@@ -19,26 +19,26 @@
             <button class="close-btn" id="closeSidebar">×</button>
         </div>
         <nav class="sidebar-nav">
-            <a href="{% url 'dashboard' %}" class="nav-item {% if request.path == '/' %}active{% endif %}">
-                <i class="fas fa-box"></i>
-                <span>Products</span>
-            </a>
-            <a href="{% url 'vendor_order_page' %}" class="nav-item {% if 'vendors' in request.path %}active{% endif %}">
-                <i class="fas fa-users"></i>
-                <span>Vendors</span>
-            </a>
-            <a href="{% url 'orders_page' %}" class="nav-item {% if 'orders' in request.path %}active{% endif %}">
-                <i class="fas fa-shopping-cart"></i>
-                <span>Orders</span>
-            </a>
-            <a href="#" class="nav-item {% if 'transactions' in request.path %}active{% endif %}">
-                <i class="fas fa-credit-card"></i>
-                <span>Transactions</span>
-            </a>
-            <a href="#" class="nav-item {% if 'reports' in request.path %}active{% endif %}">
-                <i class="fas fa-file-alt"></i>
-                <span>Reports</span>
-            </a>
+           <a href="{% url 'dashboard' %}" class="nav-item {% if request.path == '/' %}active{% endif %}">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+</a>
+<a href="{% url 'vendor_order_page' %}" class="nav-item {% if 'vendors' in request.path %}active{% endif %}">
+    <i class="fas fa-users"></i>
+    <span>Vendors</span>
+</a>
+<a href="{% url 'orders_page' %}" class="nav-item {% if 'orders' in request.path %}active{% endif %}">
+    <i class="fas fa-shopping-cart"></i>
+    <span>Orders</span>
+</a>
+<a href="{% url 'transactions_page' %}" class="nav-item {% if 'transactions' in request.path %}active{% endif %}">
+    <i class="fas fa-credit-card"></i>
+    <span>Transactions</span>
+</a>
+<a href="{% url 'reports_page' %}" class="nav-item {% if 'reports' in request.path %}active{% endif %}">
+    <i class="fas fa-file-alt"></i>
+    <span>Reports</span>
+</a>
         </nav>
     </div>
 

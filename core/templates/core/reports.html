@@ -1,0 +1,112 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Reports - Medical Inventory Management System{% endblock %}
+
+{% block content %}
+<div class="section">
+    <!-- Header with Filter -->
+    <div class="section-header">
+        <h2>Sales Reports</h2>
+        <div class="filter-container">
+            <form method="get" style="display:inline;">
+                <select name="period" id="reportPeriod" onchange="this.form.submit()">
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- Most Selling Products Section -->
+    <section class="horizontal-scroll" style="margin-bottom: 32px;">
+        {% for product in most_selling %}
+        <div class="medicine-card">
+            <div class="medicine-info">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <h3>{{ product.name }}</h3>
+                    <span class="status-badge" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46;">
+                        #{{ forloop.counter }}
+                    </span>
+                </div>
+                
+                <div class="product-category">
+                    <i class="fas fa-tag"></i>
+                    <span>{{ product.category }}</span>
+                </div>
+
+                <div class="stock-progress">
+                    <div class="stock-progress-label">
+                        <span>Units Sold</span>
+                        <span>{{ product.units_sold|default:0 }}</span>
+                    </div>
+                    <div class="stock-progress-bar">
+                        {% widthratio product.units_sold most_selling.0.units_sold 100 as progress_width %}
+                        <div class="stock-progress-fill good" style="width: {{ progress_width }}%"></div>
+                    </div>
+                </div>
+
+                <div class="product-details" style="margin-top: 16px;">
+                    <div class="product-detail">
+                        <i class="fas fa-money-bill"></i>
+                        <span>Revenue: ₹{{ product.total_revenue|floatformat:2 }}</span>
+                    </div>
+                    <div class="product-detail">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Avg. Daily Sales: {{ product.avg_daily_sales|floatformat:1 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-products">
+            <i class="fas fa-chart-bar"></i>
+            <h3>No sales data available</h3>
+            <p>Start selling products to see reports</p>
+        </div>
+        {% endfor %}
+    </section>
+
+    <!-- Summary Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon profit">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-content">
+                <h3>₹{{ total_revenue|floatformat:2 }}</h3>
+                <p>Total Revenue</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon inventory">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_units_sold }}</h3>
+                <p>Units Sold</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon out-of-stock">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ best_selling.name }}</h3>
+                <p>Best Selling Product</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon expired">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ best_day|date:"d M Y" }}</h3>
+                <p>Best Sales Day</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

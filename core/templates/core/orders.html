@@ -11,7 +11,8 @@
                     <tr>
                         <th>Order ID</th>
                         <th>Vendor</th>
-                        <th>Products</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
                         <th>Date</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -19,36 +20,41 @@
                 </thead>
                 <tbody>
                     {% for order in orders %}
-                    <tr>
-                        <td>#{{ order.id }}</td>
-                        <td>{{ order.vendor.name }}</td>
-                        <td>
-                            {% for item in order.items.all %}
-                            {{ item.product.name }} ({{ item.quantity }})<br>
-                            {% endfor %}
-                        </td>
-                        <td>{{ order.date|date:"M d, Y" }}</td>
-                        <td>
-                            <span class="status-badge status-{{ order.status }}">
-                                {{ order.status|title }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if order.status == 'pending' %}
-                            <form action="{% url 'complete_order' order.id %}" method="POST" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-success btn-sm">Complete</button>
-                            </form>
-                            <form action="{% url 'cancel_order' order.id %}" method="POST" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
-                            </form>
+                        {% for item in order.items.all %}
+                        <tr>
+                            {% if forloop.first %}
+                                <td rowspan="{{ order.items.count }}">{{ order.id }}</td>
+                                <td rowspan="{{ order.items.count }}">{{ order.vendor.name }}</td>
                             {% endif %}
-                        </td>
-                    </tr>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            {% if forloop.first %}
+                                <td rowspan="{{ order.items.count }}">{{ order.date|date:"M d, Y" }}</td>
+                                <td rowspan="{{ order.items.count }}">
+                                    <span class="status-badge status-{{ order.status }}">
+                                        {{ order.status|title }}
+                                    </span>
+                                </td>
+                                <td rowspan="{{ order.items.count }}">
+                                    {% if order.status == 'pending' %}
+                                    <div class="action-btns">
+                                        <form action="{% url 'complete_order' order.id %}" method="POST" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm">Complete</button>
+                                        </form>
+                                        <form action="{% url 'cancel_order' order.id %}" method="POST" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
                     {% empty %}
                     <tr>
-                        <td colspan="6">No orders found</td>
+                        <td colspan="7">No orders found</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -56,4 +62,13 @@
         </div>
     </div>
 </div>
+
+<style>
+.action-btns {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
+}
+</style>
 {% endblock %}

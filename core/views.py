@@ -2,8 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum, F, Q
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
+import json
 from .models import Order, OrderItem, Product, Transaction, Vendor
 
 @require_POST
@@ -40,7 +43,9 @@ def dashboard(request):
         products = products.order_by('price')
     categories = Product.objects.values_list('category', flat=True).distinct().order_by('category')
     total_stock = products.aggregate(total=Sum('stock_quantity'))['total'] or 0
-    out_of_stock_count = products.filter(stock_quantity=0).count()
+    # Only count products that are out of stock and not expired
+    out_of_stock_count = products.filter(stock_quantity=0, expiry_date__gte=timezone.now().date()).count()
+    # Only count products that are expired (regardless of stock)
     expired_count = products.filter(expiry_date__lt=timezone.now().date()).count()
     total_profit = Transaction.objects.aggregate(total=Sum('total_price'))['total'] or 0
     most_selling = (
@@ -48,6 +53,7 @@ def dashboard(request):
         .order_by('-units_sold')
         .filter(units_sold__isnull=False)[:5]
     )
+    today = timezone.now().date()
     context = {
         'products': products,
         'categories': categories,
@@ -59,15 +65,15 @@ def dashboard(request):
         'total_profit': total_profit,
         'most_selling': most_selling,
         'query': query,
+        'today': today,
     }
     return render(request, 'core/dashboard.html', context)
 
 def vendor_order_page(request):
-    # Exclude products that are already in a pending order
-    pending_product_ids = OrderItem.objects.filter(order__status='pending').values_list('product_id', flat=True)
+    # Show products that are out of stock, low stock, or expired
     products = Product.objects.filter(
         Q(stock_quantity__lte=F('min_stock_level')) | Q(expiry_date__lt=timezone.now().date())
-    ).exclude(id__in=pending_product_ids).distinct()
+    ).distinct()
     vendors = Vendor.objects.all()
     categories = Product.objects.values_list('category', flat=True).distinct()
     today = timezone.now().date()
@@ -102,7 +108,6 @@ def create_order(request):
             quantity=quantity,
             price=unit_price
         )
-        # Do NOT increase stock here!
         return redirect('vendor_order_page')
     return redirect('vendor_order_page')
 
@@ -116,9 +121,16 @@ def cancel_order(request, order_id):
 @require_POST
 def complete_order(request, order_id):
     order = get_object_or_404(Order, id=order_id)
+    today = timezone.now().date()
     if order.status == 'pending':
         for item in order.items.all():
             item.product.stock_quantity += item.quantity
+            if item.product.expiry_date < today:
+                new_expiry = today.replace(year=today.year + 2)
+                try:
+                    item.product.expiry_date = new_expiry
+                except ValueError:
+                    item.product.expiry_date = new_expiry.replace(day=28)
             item.product.save()
         order.status = 'completed'
         order.save()
@@ -145,7 +157,6 @@ def create_new_product_and_order(request):
         vendor = get_object_or_404(Vendor, id=vendor_id)
 
     if all([name, category, price, vendor, quantity, expiry_date]):
-        # Set stock_quantity to 0 so it appears in vendor list until order is completed
         product = Product.objects.create(
             name=name,
             category=category,
@@ -166,3 +177,99 @@ def create_new_product_and_order(request):
         return redirect('vendor_order_page')
     messages.error(request, "Please fill all fields.")
     return redirect('vendor_order_page')
+
+@require_POST
+def bulk_sell_products(request):
+    product_ids = request.POST.getlist('product_id')
+    quantities = request.POST.getlist('quantity')
+    errors = []
+    for pid, qty in zip(product_ids, quantities):
+        try:
+            product = Product.objects.get(id=pid)
+            qty = int(qty)
+            if qty > 0 and qty <= product.stock_quantity:
+                product.stock_quantity -= qty
+                product.save()
+                Transaction.objects.create(
+                    product=product,
+                    quantity=qty,
+                    total_price=qty * product.price,
+                    date=timezone.now()
+                )
+            else:
+                errors.append(f"{product.name}: Invalid quantity")
+        except Exception as e:
+            errors.append(str(e))
+    if errors:
+        messages.error(request, "Some products could not be sold: " + "; ".join(errors))
+    else:
+        messages.success(request, "Products sold successfully!")
+    return redirect('dashboard')
+
+@csrf_exempt
+@require_POST
+def process_bulk_order(request):
+    try:
+        data = json.loads(request.body)
+        items = data.get('items', [])
+        if not items:
+            return JsonResponse({'success': False, 'message': 'No items in cart'})
+        total_amount = 0
+        total_items = 0
+        with transaction.atomic():
+            for item in items:
+                product_id = item['product_id']
+                quantity = item['quantity']
+                try:
+                    product = Product.objects.get(id=product_id)
+                except Product.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': f'Product not found'})
+                if product.stock_quantity < quantity:
+                    return JsonResponse({
+                        'success': False, 
+                        'message': f'Insufficient stock for {product.name}. Available: {product.stock_quantity}'
+                    })
+                if product.expiry_date < timezone.now().date():
+                    return JsonResponse({
+                        'success': False, 
+                        'message': f'{product.name} has expired'
+                    })
+                item_total = product.price * quantity
+                total_amount += item_total
+                total_items += quantity
+                product.stock_quantity -= quantity
+                product.save()
+                Transaction.objects.create(
+                    product=product,
+                    quantity=quantity,
+                    total_price=item_total,
+                    date=timezone.now()
+                )
+        return JsonResponse({
+            'success': True,
+            'message': f'Order processed successfully',
+            'total_amount': total_amount,
+            'total_items': total_items
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+    
+def transactions_page(request):
+    transactions = Transaction.objects.select_related('product').order_by('-date')
+    context = {
+        'transactions': transactions,
+    }
+    return render(request, 'core/transactions.html', context)
+
+def reports_page(request):
+    most_selling = (
+        Product.objects.annotate(units_sold=Sum('transaction__quantity'))
+        .order_by('-units_sold')
+        .filter(units_sold__isnull=False)[:10]
+    )
+    context = {
+        'most_selling': most_selling,
+    }
+    return render(request, 'core/reports.html', context)
