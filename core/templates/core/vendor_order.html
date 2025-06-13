@@ -1,0 +1,169 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-content">
+    <div class="section">
+        <h2>Order Products</h2>
+        <button class="btn btn-success" onclick="document.getElementById('newProductModal').style.display='flex'">+ New Product</button>
+        <div class="table-container" style="margin-top: 20px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Current Stock</th>
+                        <th>Status</th>
+                        <th>Vendor</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total Cost</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <form method="post" action="{% url 'create_order' %}">
+                            {% csrf_token %}
+                            <td>
+                                {{ product.name }}
+                                <input type="hidden" name="product" value="{{ product.id }}">
+                            </td>
+                            <td>{{ product.category }}</td>
+                            <td>{{ product.stock_quantity }}</td>
+                            <td>
+                                {% if product.expiry_date < today %}
+                                    <span class="status-badge expired">Expired</span>
+                                {% elif product.stock_quantity <= product.min_stock_level %}
+                                    <span class="status-badge low-stock">Low Stock</span>
+                                {% else %}
+                                    <span class="status-badge in-stock">OK</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <select name="vendor" required>
+                                    {% for vendor in vendors %}
+                                    <option value="{{ vendor.id }}" {% if product.vendor and product.vendor.id == vendor.id %}selected{% endif %}>{{ vendor.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" name="quantity" min="1" value="1" style="width:60px;" required>
+                            </td>
+                            <td>
+                                <input type="number" name="unit_price" min="0" step="0.01" value="{{ product.price }}" style="width:80px;" required>
+                            </td>
+                            <td>
+                                <input type="number" name="total_cost" value="{{ product.price }}" style="width:90px;" readonly onfocus="this.blur();">
+                            </td>
+                            <td>
+                                <button type="submit" class="btn btn-success btn-sm">Order</button>
+                            </td>
+                        </form>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">No products to order</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- New Product Modal -->
+    <div class="modal" id="newProductModal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add & Order New Product</h3>
+                <button class="close-modal" onclick="document.getElementById('newProductModal').style.display='none'">×</button>
+            </div>
+            <form action="{% url 'create_new_product_and_order' %}" method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Product Name:</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Category:</label>
+                    <select name="category" id="categorySelect" onchange="toggleNewCategory(this)">
+                        <option value="">--Select Existing--</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
+                        <option value="__new__">Add New Category</option>
+                    </select>
+                    <input type="text" name="new_category" id="newCategoryInput" placeholder="New Category" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label>Expiry Date:</label>
+                    <input type="date" name="expiry_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Vendor:</label>
+                    <select name="vendor" id="vendorSelect" onchange="toggleNewVendor(this)">
+                        <option value="">--Select Existing--</option>
+                        {% for vendor in vendors %}
+                        <option value="{{ vendor.id }}">{{ vendor.name }}</option>
+                        {% endfor %}
+                        <option value="__new__">Add New Vendor</option>
+                    </select>
+                    <input type="text" name="new_vendor" id="newVendorInput" placeholder="New Vendor Name" style="display:none;">
+                    <input type="text" name="new_vendor_contact" id="newVendorContactInput" placeholder="New Vendor Contact" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label>Quantity:</label>
+                    <input type="number" name="quantity" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Unit Price:</label>
+                    <input type="number" name="price" min="0" step="0.01" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('newProductModal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-success">Add & Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleNewCategory(select) {
+    var input = document.getElementById('newCategoryInput');
+    if (select.value === '__new__') {
+        input.style.display = 'block';
+        input.required = true;
+    } else {
+        input.style.display = 'none';
+        input.required = false;
+    }
+}
+function toggleNewVendor(select) {
+    var nameInput = document.getElementById('newVendorInput');
+    var contactInput = document.getElementById('newVendorContactInput');
+    if (select.value === '__new__') {
+        nameInput.style.display = 'block';
+        nameInput.required = true;
+        contactInput.style.display = 'block';
+        contactInput.required = true;
+    } else {
+        nameInput.style.display = 'none';
+        nameInput.required = false;
+        contactInput.style.display = 'none';
+        contactInput.required = false;
+    }
+}
+document.addEventListener('input', function(e) {
+    if (e.target.name === 'quantity' || e.target.name === 'unit_price' || e.target.name === 'price') {
+        var row = e.target.closest('tr') || e.target.closest('form');
+        if (!row) return;
+        var qty = row.querySelector('input[name="quantity"]') ? row.querySelector('input[name="quantity"]').value : 1;
+        var price = row.querySelector('input[name="unit_price"]') ? row.querySelector('input[name="unit_price"]').value : row.querySelector('input[name="price"]').value;
+        var total = row.querySelector('input[name="total_cost"]');
+        if (total) total.value = (parseFloat(qty || 0) * parseFloat(price || 0)).toFixed(2);
+    }
+});
+</script>
+{% endblock %}

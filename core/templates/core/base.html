@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Medical Inventory Management System{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{% static 'core/styles.css' %}" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar open" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-pills"></i>
+                <h2>MediStock</h2>
+            </div>
+            <button class="close-btn" id="closeSidebar">×</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{% url 'dashboard' %}" class="nav-item {% if request.path == '/' %}active{% endif %}">
+                <i class="fas fa-box"></i>
+                <span>Products</span>
+            </a>
+            <a href="{% url 'vendor_order_page' %}" class="nav-item {% if 'vendors' in request.path %}active{% endif %}">
+                <i class="fas fa-users"></i>
+                <span>Vendors</span>
+            </a>
+            <a href="{% url 'orders_page' %}" class="nav-item {% if 'orders' in request.path %}active{% endif %}">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Orders</span>
+            </a>
+            <a href="#" class="nav-item {% if 'transactions' in request.path %}active{% endif %}">
+                <i class="fas fa-credit-card"></i>
+                <span>Transactions</span>
+            </a>
+            <a href="#" class="nav-item {% if 'reports' in request.path %}active{% endif %}">
+                <i class="fas fa-file-alt"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-btn" id="menuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <form method="get" action="">
+                        <input type="text" name="q" placeholder="Search products" id="searchInput" value="{{ query }}">
+                    </form>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="notification-container">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <!-- Notification Dropdown -->
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-header">
+                            <h3>Notifications</h3>
+                            <button class="close-notification" id="closeNotification">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="notification-list">
+                            <div class="notification-item warning">
+                                <div class="notification-dot"></div>
+                                <div class="notification-content">
+                                    <h4>Low Stock Alert</h4>
+                                    <p>
+                                        {% for product in products %}
+                                            {% if product.stock_quantity <= product.min_stock_level and product.stock_quantity > 0 %}
+                                                {{ product.name }} is running low ({{ product.stock_quantity }} units left)<br>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                    <span class="notification-time">Recently</span>
+                                </div>
+                            </div>
+                            <div class="notification-item info">
+                                <div class="notification-dot"></div>
+                                <div class="notification-content">
+                                    <h4>New Order</h4>
+                                    <p>Order placed</p>
+                                    <span class="notification-time">Recently</span>
+                                </div>
+                            </div>
+                            <div class="notification-item danger">
+                                <div class="notification-dot"></div>
+                                <div class="notification-content">
+                                    <h4>Expiry Alert</h4>
+                                    <p>
+                                        {% for product in products %}
+                                            {% if product.expiry_date <= today|add:"30" %}
+                                                {{ product.name }} expiring soon<br>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                    <span class="notification-time">Recently</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-container">
+                    <button class="profile-btn" id="profileBtn">
+                        <span>Akhilesh Yadav Ji</span>
+                    </button>
+                    <!-- Profile Dropdown -->
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="#" class="profile-item">
+                            <i class="fas fa-user"></i>
+                            <span>View Profile</span>
+                        </a>
+                        <a href="#" class="profile-item">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </a>
+                        <hr>
+                        <a href="#" class="profile-item logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="page-content">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+</body>
+</html>

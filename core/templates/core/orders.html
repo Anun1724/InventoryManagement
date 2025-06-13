@@ -1,0 +1,59 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-content">
+    <div class="section">
+        <h2>Orders</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Vendor</th>
+                        <th>Products</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>{{ order.vendor.name }}</td>
+                        <td>
+                            {% for item in order.items.all %}
+                            {{ item.product.name }} ({{ item.quantity }})<br>
+                            {% endfor %}
+                        </td>
+                        <td>{{ order.date|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="status-badge status-{{ order.status }}">
+                                {{ order.status|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if order.status == 'pending' %}
+                            <form action="{% url 'complete_order' order.id %}" method="POST" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">Complete</button>
+                            </form>
+                            <form action="{% url 'cancel_order' order.id %}" method="POST" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">No orders found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
