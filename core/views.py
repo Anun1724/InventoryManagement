@@ -264,11 +264,16 @@ def transactions_page(request):
     return render(request, 'core/transactions.html', context)
 
 def reports_page(request):
+    # Get top 5 most selling products with their total units sold
     most_selling = (
-        Product.objects.annotate(units_sold=Sum('transaction__quantity'))
-        .order_by('-units_sold')
-        .filter(units_sold__isnull=False)[:10]
+        Product.objects.annotate(
+            units_sold=Sum('transaction__quantity'),
+            total_revenue=Sum(F('transaction__quantity') * F('price'))
+        )
+        .filter(units_sold__isnull=False)
+        .order_by('-units_sold')[:5]
     )
+
     context = {
         'most_selling': most_selling,
     }
